@@ -9,6 +9,7 @@ import com.github.juliarn.npc.SpawnCustomizer;
 import com.github.juliarn.npc.modifier.MetadataModifier;
 import com.github.juliarn.npc.profile.Profile;
 import me.matsubara.roulette.RoulettePlugin;
+import me.matsubara.roulette.event.RouletteEndEvent;
 import me.matsubara.roulette.game.data.Bet;
 import me.matsubara.roulette.game.data.Chip;
 import me.matsubara.roulette.game.data.Slot;
@@ -196,16 +197,17 @@ public final class Game {
         return npc.getProfile().getProperty("textures").map(Profile.Property::getSignature).orElse(null);
     }
 
-    public void setNPC(String name, @Nullable String texture, @Nullable String signature) {
+    public void setNPC(@Nullable String name, @Nullable String texture, @Nullable String signature) {
         // If this game already has an NPC, remove first.
         if (this.npc != null) {
             plugin.getNPCPool().removeNPC(npc.getEntityId());
         }
 
-        if (name == null) name = "";
+        String unnamed = ConfigManager.Config.UNNAMED_CROUPIER.asString();
+        if (name == null || name.isEmpty()) name = unnamed;
 
-        // Hide npc name if empty string.
-        if (name.trim().isEmpty()) {
+        // Hide npc name if empty unnamed.
+        if (name.equalsIgnoreCase(unnamed)) {
             plugin.getHideTeam().addEntry(name);
         }
 
@@ -293,7 +295,6 @@ public final class Game {
         if (!isPlaying(player)) {
             // Add player to the game and sit.
             players.put(player, new Bet(this));
-            // TODO: Before sitting, teleport player to a spawn point of the game (won't work with @fix-camera tho).
             sitPlayer(player, true);
         }
 
@@ -491,15 +492,21 @@ public final class Game {
             stand = model.getByName("CHAIR_" + CHAIRS[ordinal]);
         } while (stand == null || stand.hasPassenger());
 
-        // Add a bit of offset.
-        if (ConfigManager.Config.FIX_CHAIR_CAMERA.asBoolean()) player.teleport(stand
-                .getLocation()
-                .clone()
-                .add(0.0d, 0.25d, 0.0d));
+        fixChairCamera(player, stand);
 
         // Play move from chair sound at player location.
         XSound.play(player.getLocation(), ConfigManager.Config.SOUND_SWAP_CHAIR.asString());
         stand.setPassenger(player);
+    }
+
+    private void fixChairCamera(Player player, PacketStand stand) {
+        if (!ConfigManager.Config.FIX_CHAIR_CAMERA.asBoolean()) return;
+
+        // Add a bit of offset.
+        plugin.getServer().getScheduler().runTask(plugin, () -> player.teleport(stand
+                .getLocation()
+                .clone()
+                .add(0.0d, 0.25d, 0.0d)));
     }
 
     public void moveChip(Player player, boolean toTheRight) {
@@ -584,6 +591,9 @@ public final class Game {
                 winners.put(player, WinType.SURRENDER);
             }
         }
+
+        RouletteEndEvent endEvent = new RouletteEndEvent(this, winners, winner);
+        plugin.getServer().getPluginManager().callEvent(endEvent);
 
         // Set all winners bet as winner.
         winners.keySet().forEach(player -> players.get(player).setHasWon(true));
