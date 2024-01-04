@@ -30,6 +30,9 @@ move-interval: 200
 # Whether to allow players to hit other players within a game.
 hit-on-game: false
 
+# Whether to allow players to join during the betting stage
+allow-join-on-selecting: false
+
 # If true, players will remain seated at the table after a game ends; ready for the next game.
 keep-seat: true
 

@@ -15,6 +15,7 @@ import me.matsubara.roulette.game.data.Bet;
 import me.matsubara.roulette.game.data.Chip;
 import me.matsubara.roulette.game.data.Slot;
 import me.matsubara.roulette.game.state.Starting;
+import me.matsubara.roulette.gui.ChipGUI;
 import me.matsubara.roulette.gui.RouletteGUI;
 import me.matsubara.roulette.hologram.Hologram;
 import me.matsubara.roulette.manager.ConfigManager;
@@ -325,7 +326,9 @@ public final class Game {
     }
 
     public boolean canJoin() {
-        return state.isIdle() || state.isStarting();
+        return state.isIdle()
+                || state.isStarting()
+                || (ConfigManager.Config.ALLOW_JOIN_ON_SELECTING.asBool() && state.isSelecting());
     }
 
     public void add(Player player, int sitAt) {
@@ -344,7 +347,7 @@ public final class Game {
         }
 
         // Can be greater than 0 when prison rule is enabled, since players aren't removed from the game.
-        if (players.size() >= minPlayers && (startingTask == null || startingTask.isCancelled())) {
+        if (!state.isSelecting() && players.size() >= minPlayers && (startingTask == null || startingTask.isCancelled())) {
             // Start starting task.
             setStartingTask(new Starting(plugin, this).runTaskTimer(plugin, 20L, 20L));
         }
@@ -353,6 +356,9 @@ public final class Game {
         updateJoinHologram(false);
 
         spinHologram.showTo(player);
+
+        if (state.isSelecting())
+            plugin.getServer().getScheduler().runTask(plugin, () -> new ChipGUI(this, player));
     }
 
     public void remove(Player player, boolean isRestart) {

@@ -116,7 +116,7 @@ public final class GameGUI implements InventoryHolder, RouletteGUI {
         ItemStack time = configManager.getItem("game-menu", "start-time", null);
         inventory.setItem(13, new ItemBuilder(time)
                 .setDisplayName(configManager.getStartTimeDisplayName(timeSeconds))
-                .setAmount(timeSeconds).build());
+                .setAmount(Math.max(1, timeSeconds)).build());
 
         // Rules.
         inventory.setItem(14, getRuleItem(GameRule.LA_PARTAGE));
